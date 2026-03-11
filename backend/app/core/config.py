@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     )
     vector_db_dir: str = Field(default="backend/.chroma", alias="VECTOR_DB_DIR")
     cors_origins_raw: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
+    cors_origin_regex: str = Field(
+        default=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+        alias="CORS_ORIGIN_REGEX",
+    )
     retrieval_k: int = 8
     retrieval_fetch_k: int = 20
 
@@ -47,4 +51,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
