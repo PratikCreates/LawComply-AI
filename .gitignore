@@ -16,6 +16,7 @@ backend/install.log
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/*.tsbuildinfo
 nebius_api_docs/
 .DS_Store
 Thumbs.db
