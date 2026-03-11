@@ -52,6 +52,8 @@ class AnalyzeRequest(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     analysis: ComplianceAnalysis
+    metrics: "AnalysisMetrics"
+    report_markdown: str
 
 
 class PolicyRecord(BaseModel):
@@ -66,3 +68,43 @@ class LibraryStats(BaseModel):
     policy_documents: int
     vector_store_ready: bool
 
+
+class AnalysisMetrics(BaseModel):
+    finding_count: int
+    gap_count: int
+    partial_count: int
+    aligned_count: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    cited_clause_count: int
+    evidence_coverage_ratio: float = Field(ge=0.0, le=1.0)
+    average_evidence_score: float
+
+
+class PortfolioScanRequest(BaseModel):
+    policy_ids: list[str] | None = None
+    top_k: int = Field(default=8, ge=3, le=16)
+
+
+class PortfolioPolicySummary(BaseModel):
+    policy_id: str
+    policy_name: str
+    overall_score: int
+    risk_posture: Literal["poor", "watch", "adequate", "strong"]
+    finding_count: int
+    critical_count: int
+    cited_clause_count: int
+    top_gaps: list[str]
+
+
+class PortfolioScanResponse(BaseModel):
+    scanned_policies: int
+    average_score: float
+    highest_risk_policy: str
+    lowest_score_policy: str
+    summaries: list[PortfolioPolicySummary]
+
+
+AnalyzeResponse.model_rebuild()

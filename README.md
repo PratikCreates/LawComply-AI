@@ -17,6 +17,9 @@ LawComply AI is an end-to-end agentic RAG framework for regulatory compliance an
 - Citation-locked compliance analysis with hallucination mitigation
 - Retrieval-backed gap detection and remediation guidance
 - Hybrid retrieval with domain-aware reranking to reduce cross-domain evidence pollution
+- Portfolio scan across multiple policies with ranked risk summaries
+- Markdown compliance report export for review sharing and documentation
+- Direct text or file-based policy intake for faster analyst workflows
 - Sample corpora covering privacy and finance controls
 - Professional review dashboard for analysts and hiring demos
 
@@ -74,6 +77,13 @@ npm run dev
 
 Open `http://localhost:5173`.
 
+## What makes it useful
+
+- You can review seeded policies immediately without preparing any extra data.
+- You can paste a real policy excerpt or load a `.txt` or `.md` file from the web app.
+- Every run returns a structured report, evidence-backed findings, derived risk metrics, and a markdown export that can be shared with a reviewer.
+- The portfolio scan highlights which policy should be reviewed first instead of forcing users to inspect documents one by one.
+
 ## API overview
 
 - `GET /health`
@@ -81,6 +91,7 @@ Open `http://localhost:5173`.
 - `GET /api/v1/policies`
 - `POST /api/v1/index/rebuild`
 - `POST /api/v1/analyze`
+- `POST /api/v1/portfolio/scan`
 
 ## Hallucination controls
 

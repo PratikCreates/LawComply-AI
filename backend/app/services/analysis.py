@@ -1,6 +1,16 @@
-from app.models.schemas import AnalyzeRequest, AnalyzeResponse, ComplianceAnalysis, EvidenceItem, PolicyRecord
+from app.models.schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    ComplianceAnalysis,
+    EvidenceItem,
+    PolicyRecord,
+    PortfolioPolicySummary,
+    PortfolioScanRequest,
+    PortfolioScanResponse,
+)
 from app.services.citation_guard import CitationGuard
 from app.services.llm import ComplianceAgent
+from app.services.reporting import AnalysisReporter
 from app.services.repository import DocumentRepository
 from app.services.retrieval import RetrievalService
 from app.services.vector_store import ComplianceIndex
@@ -12,6 +22,7 @@ class ComplianceAnalysisService:
         self.index = ComplianceIndex()
         self.agent = ComplianceAgent()
         self.guard = CitationGuard()
+        self.reporter = AnalysisReporter()
 
     def rebuild_index(self) -> int:
         files = self.repository.list_regulation_files()
@@ -57,4 +68,44 @@ class ComplianceAnalysisService:
             evidence=evidence,
         )
         validated = self.guard.validate(analysis)
-        return AnalyzeResponse(analysis=validated)
+        metrics = self.reporter.build_metrics(validated)
+        report_markdown = self.reporter.render_markdown(validated, metrics)
+        return AnalyzeResponse(analysis=validated, metrics=metrics, report_markdown=report_markdown)
+
+    def portfolio_scan(self, request: PortfolioScanRequest) -> PortfolioScanResponse:
+        available_policies = {policy.id: policy for policy in self.repository.list_policies()}
+        selected_ids = request.policy_ids or list(available_policies.keys())
+        summaries: list[PortfolioPolicySummary] = []
+        analyses: list[AnalyzeResponse] = []
+
+        for policy_id in selected_ids:
+            if policy_id not in available_policies:
+                raise FileNotFoundError(f"Unknown policy '{policy_id}'.")
+            response = self.analyze(AnalyzeRequest(policy_id=policy_id, top_k=request.top_k))
+            analyses.append(response)
+            summaries.append(
+                PortfolioPolicySummary(
+                    policy_id=policy_id,
+                    policy_name=response.analysis.policy_name,
+                    overall_score=response.analysis.overall_score,
+                    risk_posture=response.analysis.risk_posture,
+                    finding_count=response.metrics.finding_count,
+                    critical_count=response.metrics.critical_count,
+                    cited_clause_count=response.metrics.cited_clause_count,
+                    top_gaps=[finding.title for finding in response.analysis.findings[:3]],
+                )
+            )
+
+        ranked = sorted(summaries, key=lambda item: item.overall_score)
+        average_score = round(sum(item.overall_score for item in summaries) / len(summaries), 2)
+        highest_risk_policy = next(
+            (item.policy_name for item in summaries if item.risk_posture in {"poor", "watch"}),
+            ranked[0].policy_name,
+        )
+        return PortfolioScanResponse(
+            scanned_policies=len(summaries),
+            average_score=average_score,
+            highest_risk_policy=highest_risk_policy,
+            lowest_score_policy=ranked[0].policy_name,
+            summaries=ranked,
+        )

@@ -1,15 +1,28 @@
-import { useEffect, useState } from "react";
-import { AlertCircle, ArrowRight, Database, FileText, ShieldCheck } from "lucide-react";
+import { type ChangeEvent, useEffect, useState } from "react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Database,
+  Download,
+  FileInput,
+  FileText,
+  LayoutDashboard,
+  ShieldCheck
+} from "lucide-react";
 import { EvidenceTable } from "./components/EvidenceTable";
 import { FindingCard } from "./components/FindingCard";
 import { MetricCard } from "./components/MetricCard";
+import { PortfolioTable } from "./components/PortfolioTable";
+import { ScoreBreakdown } from "./components/ScoreBreakdown";
 import {
   analyzePolicy,
   fetchPolicies,
   fetchStats,
+  portfolioScan,
   rebuildIndex,
-  type ComplianceAnalysis,
+  type AnalyzeResult,
   type LibraryStats,
+  type PortfolioScanResult,
   type PolicyRecord
 } from "./lib/api";
 
@@ -25,7 +38,8 @@ export default function App() {
   const [selectedPolicy, setSelectedPolicy] = useState<string>("");
   const [policyText, setPolicyText] = useState("");
   const [stats, setStats] = useState<LibraryStats>(emptyStats);
-  const [analysis, setAnalysis] = useState<ComplianceAnalysis | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeResult | null>(null);
+  const [portfolioResult, setPortfolioResult] = useState<PortfolioScanResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>("");
 
@@ -66,13 +80,52 @@ export default function App() {
         ? { policy_text: policyText, top_k: 8 }
         : { policy_id: selectedPolicy, top_k: 8 };
       const result = await analyzePolicy(payload);
-      setAnalysis(result);
+      setAnalysisResult(result);
     } catch (error) {
       setMessage((error as Error).message);
     } finally {
       setBusy(false);
     }
   }
+
+  async function handlePortfolioScan() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await portfolioScan();
+      setPortfolioResult(result);
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFileLoad(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const text = await file.text();
+    setPolicyText(text);
+    setMessage(`Loaded ${file.name} into the editor.`);
+  }
+
+  function handleDownloadReport() {
+    if (!analysisResult) {
+      return;
+    }
+    const blob = new Blob([analysisResult.report_markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${analysisResult.analysis.policy_name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-report.md`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const analysis = analysisResult?.analysis ?? null;
+  const metrics = analysisResult?.metrics ?? null;
 
   return (
     <div className="shell">
@@ -88,6 +141,9 @@ export default function App() {
             <button className="primary-button" onClick={handleAnalyze} disabled={busy}>
               Run analysis
               <ArrowRight size={16} />
+            </button>
+            <button className="secondary-button" onClick={handlePortfolioScan} disabled={busy}>
+              Portfolio scan
             </button>
             <button className="secondary-button" onClick={handleIndexRebuild} disabled={busy}>
               Rebuild index
@@ -173,6 +229,17 @@ export default function App() {
             onChange={(event) => setPolicyText(event.target.value)}
           />
 
+          <div className="utility-row">
+            <label className="file-button">
+              <FileInput size={15} />
+              Load `.txt` or `.md`
+              <input type="file" accept=".txt,.md" onChange={handleFileLoad} />
+            </label>
+            <button className="ghost-button" onClick={() => setPolicyText("")} disabled={busy}>
+              Clear editor
+            </button>
+          </div>
+
           {message ? (
             <div className="message-row">
               <AlertCircle size={16} />
@@ -188,7 +255,7 @@ export default function App() {
           </div>
           {analysis ? (
             <>
-              <div className="score-strip">
+              <div className="score-strip score-strip-spread">
                 <div>
                   <span className="metric-label">Overall score</span>
                   <strong className="score-value">{analysis.overall_score}</strong>
@@ -197,8 +264,13 @@ export default function App() {
                   <span className="metric-label">Risk posture</span>
                   <strong className="score-value small">{analysis.risk_posture}</strong>
                 </div>
+                <button className="secondary-button" onClick={handleDownloadReport}>
+                  <Download size={15} />
+                  Export markdown report
+                </button>
               </div>
               <p className="summary-copy">{analysis.executive_summary}</p>
+              {metrics ? <ScoreBreakdown metrics={metrics} /> : null}
               <div className="finding-list">
                 {analysis.findings.map((finding) => (
                   <FindingCard key={finding.title} finding={finding} />
@@ -225,8 +297,48 @@ export default function App() {
             </div>
           )}
         </section>
+
+        <section className="portfolio-card">
+          <div className="section-heading">
+            <h2>Portfolio overview</h2>
+            <p>Scan the seeded policy pack to prioritize review work across documents.</p>
+          </div>
+          {portfolioResult ? (
+            <>
+              <div className="portfolio-metrics">
+                <MetricCard
+                  label="Policies scanned"
+                  value={portfolioResult.scanned_policies}
+                  note="Seeded portfolio coverage"
+                />
+                <MetricCard
+                  label="Average score"
+                  value={portfolioResult.average_score}
+                  note="Mean score across scanned policies"
+                />
+                <MetricCard
+                  label="Highest risk"
+                  value={portfolioResult.highest_risk_policy}
+                  note="First policy requiring attention"
+                />
+                <MetricCard
+                  label="Lowest score"
+                  value={portfolioResult.lowest_score_policy}
+                  note="Current weakest control set"
+                />
+              </div>
+              <PortfolioTable summaries={portfolioResult.summaries} />
+            </>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-copy">
+                <LayoutDashboard size={18} />
+                <p>Run a portfolio scan to compare policy risk across the seeded document set.</p>
+              </div>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
 }
-

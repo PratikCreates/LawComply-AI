@@ -2,7 +2,14 @@ from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import AnalyzeRequest, AnalyzeResponse, LibraryStats, PolicyRecord
+from app.models.schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    LibraryStats,
+    PolicyRecord,
+    PortfolioScanRequest,
+    PortfolioScanResponse,
+)
 from app.services.analysis import ComplianceAnalysisService
 
 
@@ -34,6 +41,16 @@ def rebuild_index() -> dict[str, int]:
 def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
     try:
         return get_service().analyze(request)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/portfolio/scan", response_model=PortfolioScanResponse)
+def portfolio_scan(request: PortfolioScanRequest) -> PortfolioScanResponse:
+    try:
+        return get_service().portfolio_scan(request)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

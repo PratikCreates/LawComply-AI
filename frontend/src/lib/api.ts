@@ -29,6 +29,45 @@ export type ComplianceAnalysis = {
   evidence: EvidenceItem[];
 };
 
+export type AnalysisMetrics = {
+  finding_count: number;
+  gap_count: number;
+  partial_count: number;
+  aligned_count: number;
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  cited_clause_count: number;
+  evidence_coverage_ratio: number;
+  average_evidence_score: number;
+};
+
+export type AnalyzeResult = {
+  analysis: ComplianceAnalysis;
+  metrics: AnalysisMetrics;
+  report_markdown: string;
+};
+
+export type PortfolioPolicySummary = {
+  policy_id: string;
+  policy_name: string;
+  overall_score: number;
+  risk_posture: "poor" | "watch" | "adequate" | "strong";
+  finding_count: number;
+  critical_count: number;
+  cited_clause_count: number;
+  top_gaps: string[];
+};
+
+export type PortfolioScanResult = {
+  scanned_policies: number;
+  average_score: number;
+  highest_risk_policy: string;
+  lowest_score_policy: string;
+  summaries: PortfolioPolicySummary[];
+};
+
 export type LibraryStats = {
   regulation_documents: number;
   regulation_clauses: number;
@@ -69,11 +108,19 @@ export async function analyzePolicy(input: {
   policy_id?: string;
   policy_text?: string;
   top_k?: number;
-}): Promise<ComplianceAnalysis> {
-  const payload = await readJson<{ analysis: ComplianceAnalysis }>("/api/v1/analyze", {
+}): Promise<AnalyzeResult> {
+  return readJson<AnalyzeResult>("/api/v1/analyze", {
     method: "POST",
     body: JSON.stringify(input)
   });
-  return payload.analysis;
 }
 
+export function portfolioScan(input?: {
+  policy_ids?: string[];
+  top_k?: number;
+}): Promise<PortfolioScanResult> {
+  return readJson<PortfolioScanResult>("/api/v1/portfolio/scan", {
+    method: "POST",
+    body: JSON.stringify(input ?? {})
+  });
+}
