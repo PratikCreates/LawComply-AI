@@ -40,6 +40,7 @@ class ComplianceAnalysis(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     policy_id: str | None = None
+    policy_name: str | None = None
     policy_text: str | None = None
     top_k: int = Field(default=8, ge=3, le=16)
 

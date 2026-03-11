@@ -44,7 +44,8 @@ class ComplianceAnalysisService:
         if request.policy_id:
             return self.repository.get_policy(request.policy_id)
         assert request.policy_text is not None
-        return PolicyRecord(id="ad_hoc.md", title="Ad hoc policy submission", body=request.policy_text)
+        title = request.policy_name or "Ad hoc policy submission"
+        return PolicyRecord(id="ad_hoc.md", title=title, body=request.policy_text)
 
     @staticmethod
     def _format_evidence(evidence: list[EvidenceItem]) -> str:
@@ -76,13 +77,11 @@ class ComplianceAnalysisService:
         available_policies = {policy.id: policy for policy in self.repository.list_policies()}
         selected_ids = request.policy_ids or list(available_policies.keys())
         summaries: list[PortfolioPolicySummary] = []
-        analyses: list[AnalyzeResponse] = []
 
         for policy_id in selected_ids:
             if policy_id not in available_policies:
                 raise FileNotFoundError(f"Unknown policy '{policy_id}'.")
             response = self.analyze(AnalyzeRequest(policy_id=policy_id, top_k=request.top_k))
-            analyses.append(response)
             summaries.append(
                 PortfolioPolicySummary(
                     policy_id=policy_id,

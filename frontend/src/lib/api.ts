@@ -106,6 +106,7 @@ export async function rebuildIndex(): Promise<number> {
 
 export async function analyzePolicy(input: {
   policy_id?: string;
+  policy_name?: string;
   policy_text?: string;
   top_k?: number;
 }): Promise<AnalyzeResult> {
