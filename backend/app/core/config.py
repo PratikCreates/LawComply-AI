@@ -21,7 +21,10 @@ class Settings(BaseSettings):
         default="https://api.tokenfactory.nebius.com/v1/",
         alias="NEBIUS_BASE_URL",
     )
-    nebius_chat_model: str = Field(default="Qwen/Qwen3-32B", alias="NEBIUS_CHAT_MODEL")
+    nebius_chat_model: str = Field(
+        default="meta-llama/Meta-Llama-3.1-8B-Instruct-fast",
+        alias="NEBIUS_CHAT_MODEL",
+    )
     nebius_embedding_model: str = Field(
         default="BAAI/bge-en-icl",
         alias="NEBIUS_EMBEDDING_MODEL",

@@ -244,6 +244,13 @@ textarea {
   color: var(--warning);
 }
 
+.info-row {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(15, 76, 92, 0.08);
+  color: var(--accent-strong);
+}
+
 .score-strip {
   display: flex;
   gap: 20px;

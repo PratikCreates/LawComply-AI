@@ -42,6 +42,7 @@ export default function App() {
   const [portfolioResult, setPortfolioResult] = useState<PortfolioScanResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>("");
+  const [busyAction, setBusyAction] = useState<"analysis" | "portfolio" | "index" | null>(null);
 
   useEffect(() => {
     void Promise.all([fetchPolicies(), fetchStats()])
@@ -59,6 +60,7 @@ export default function App() {
 
   async function handleIndexRebuild() {
     setBusy(true);
+    setBusyAction("index");
     setMessage("");
     try {
       const indexed = await rebuildIndex();
@@ -69,11 +71,13 @@ export default function App() {
       setMessage((error as Error).message);
     } finally {
       setBusy(false);
+      setBusyAction(null);
     }
   }
 
   async function handleAnalyze() {
     setBusy(true);
+    setBusyAction("analysis");
     setMessage("");
     try {
       const payload = policyText.trim()
@@ -85,11 +89,13 @@ export default function App() {
       setMessage((error as Error).message);
     } finally {
       setBusy(false);
+      setBusyAction(null);
     }
   }
 
   async function handlePortfolioScan() {
     setBusy(true);
+    setBusyAction("portfolio");
     setMessage("");
     try {
       const result = await portfolioScan();
@@ -98,6 +104,7 @@ export default function App() {
       setMessage((error as Error).message);
     } finally {
       setBusy(false);
+      setBusyAction(null);
     }
   }
 
@@ -139,14 +146,14 @@ export default function App() {
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={handleAnalyze} disabled={busy}>
-              Run analysis
+              {busyAction === "analysis" ? "Running analysis..." : "Run analysis"}
               <ArrowRight size={16} />
             </button>
             <button className="secondary-button" onClick={handlePortfolioScan} disabled={busy}>
-              Portfolio scan
+              {busyAction === "portfolio" ? "Scanning portfolio..." : "Portfolio scan"}
             </button>
             <button className="secondary-button" onClick={handleIndexRebuild} disabled={busy}>
-              Rebuild index
+              {busyAction === "index" ? "Rebuilding index..." : "Rebuild index"}
             </button>
           </div>
         </div>
@@ -244,6 +251,11 @@ export default function App() {
             <div className="message-row">
               <AlertCircle size={16} />
               <span>{message}</span>
+            </div>
+          ) : null}
+          {busyAction === "analysis" ? (
+            <div className="info-row">
+              <span>Analysis is running against the compliance model. This can take around 15-45 seconds.</span>
             </div>
           ) : null}
         </section>
