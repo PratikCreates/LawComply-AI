@@ -21,3 +21,5 @@ frontend/*.tsbuildinfo
 nebius_api_docs/
 .DS_Store
 Thumbs.db
+
+backend/runtime/

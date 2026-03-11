@@ -75,6 +75,69 @@ export type LibraryStats = {
   vector_store_ready: boolean;
 };
 
+export type RunHistoryEntry = {
+  run_id: string;
+  created_at: string;
+  policy_name: string;
+  analysis_mode: "sample" | "ad_hoc";
+  overall_score: number;
+  risk_posture: "poor" | "watch" | "adequate" | "strong";
+  finding_count: number;
+  critical_count: number;
+  cited_clause_count: number;
+  top_findings: string[];
+  cited_clause_ids: string[];
+};
+
+export type RunHistoryResponse = {
+  items: RunHistoryEntry[];
+};
+
+export type PolicyRunSummary = {
+  policy_name: string;
+  runs: number;
+  average_score: number;
+};
+
+export type ClauseFrequency = {
+  clause_id: string;
+  count: number;
+};
+
+export type GapFrequency = {
+  title: string;
+  count: number;
+};
+
+export type ScoreTrendPoint = {
+  created_at: string;
+  policy_name: string;
+  overall_score: number;
+};
+
+export type AnalyticsSummary = {
+  total_runs: number;
+  average_score: number;
+  poor_runs: number;
+  watch_runs: number;
+  adequate_runs: number;
+  strong_runs: number;
+  policy_breakdown: PolicyRunSummary[];
+  top_clauses: ClauseFrequency[];
+  top_gaps: GapFrequency[];
+  score_trend: ScoreTrendPoint[];
+};
+
+export type CoverageMatrixRow = {
+  policy_name: string;
+  clauses: Record<string, number>;
+};
+
+export type CoverageMatrix = {
+  clause_ids: string[];
+  rows: CoverageMatrixRow[];
+};
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -95,6 +158,22 @@ export function fetchPolicies(): Promise<PolicyRecord[]> {
 
 export function fetchStats(): Promise<LibraryStats> {
   return readJson("/api/v1/library/stats");
+}
+
+export function fetchHistory(): Promise<RunHistoryResponse> {
+  return readJson("/api/v1/history");
+}
+
+export function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
+  return readJson("/api/v1/analytics/summary");
+}
+
+export function fetchCoverageMatrix(): Promise<CoverageMatrix> {
+  return readJson("/api/v1/analytics/coverage-matrix");
+}
+
+export function historyCsvUrl(): string {
+  return `${API_BASE_URL}/api/v1/history/export.csv`;
 }
 
 export async function rebuildIndex(): Promise<number> {

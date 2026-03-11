@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     def data_dir(self) -> Path:
         return ROOT_DIR / "data"
 
+    @property
+    def runtime_dir(self) -> Path:
+        return ROOT_DIR / "backend" / "runtime"
+
+    @property
+    def run_history_path(self) -> Path:
+        return self.runtime_dir / "run_history.json"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -51,9 +51,23 @@ class AnalyzeRequest(BaseModel):
         return self
 
 
+class AnalysisMetrics(BaseModel):
+    finding_count: int
+    gap_count: int
+    partial_count: int
+    aligned_count: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    cited_clause_count: int
+    evidence_coverage_ratio: float = Field(ge=0.0, le=1.0)
+    average_evidence_score: float
+
+
 class AnalyzeResponse(BaseModel):
     analysis: ComplianceAnalysis
-    metrics: "AnalysisMetrics"
+    metrics: AnalysisMetrics
     report_markdown: str
 
 
@@ -68,20 +82,6 @@ class LibraryStats(BaseModel):
     regulation_clauses: int
     policy_documents: int
     vector_store_ready: bool
-
-
-class AnalysisMetrics(BaseModel):
-    finding_count: int
-    gap_count: int
-    partial_count: int
-    aligned_count: int
-    critical_count: int
-    high_count: int
-    medium_count: int
-    low_count: int
-    cited_clause_count: int
-    evidence_coverage_ratio: float = Field(ge=0.0, le=1.0)
-    average_evidence_score: float
 
 
 class PortfolioScanRequest(BaseModel):
@@ -106,6 +106,69 @@ class PortfolioScanResponse(BaseModel):
     highest_risk_policy: str
     lowest_score_policy: str
     summaries: list[PortfolioPolicySummary]
+
+
+class RunHistoryEntry(BaseModel):
+    run_id: str
+    created_at: str
+    policy_name: str
+    analysis_mode: Literal["sample", "ad_hoc"]
+    overall_score: int
+    risk_posture: Literal["poor", "watch", "adequate", "strong"]
+    finding_count: int
+    critical_count: int
+    cited_clause_count: int
+    top_findings: list[str]
+    cited_clause_ids: list[str]
+
+
+class RunHistoryResponse(BaseModel):
+    items: list[RunHistoryEntry]
+
+
+class PolicyRunSummary(BaseModel):
+    policy_name: str
+    runs: int
+    average_score: float
+
+
+class ClauseFrequency(BaseModel):
+    clause_id: str
+    count: int
+
+
+class GapFrequency(BaseModel):
+    title: str
+    count: int
+
+
+class ScoreTrendPoint(BaseModel):
+    created_at: str
+    policy_name: str
+    overall_score: int
+
+
+class AnalyticsSummaryResponse(BaseModel):
+    total_runs: int
+    average_score: float
+    poor_runs: int
+    watch_runs: int
+    adequate_runs: int
+    strong_runs: int
+    policy_breakdown: list[PolicyRunSummary]
+    top_clauses: list[ClauseFrequency]
+    top_gaps: list[GapFrequency]
+    score_trend: list[ScoreTrendPoint]
+
+
+class CoverageMatrixRow(BaseModel):
+    policy_name: str
+    clauses: dict[str, int]
+
+
+class CoverageMatrixResponse(BaseModel):
+    clause_ids: list[str]
+    rows: list[CoverageMatrixRow]
 
 
 AnalyzeResponse.model_rebuild()

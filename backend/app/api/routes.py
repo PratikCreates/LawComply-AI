@@ -1,14 +1,18 @@
 from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from app.models.schemas import (
+    AnalyticsSummaryResponse,
     AnalyzeRequest,
     AnalyzeResponse,
+    CoverageMatrixResponse,
     LibraryStats,
     PolicyRecord,
     PortfolioScanRequest,
     PortfolioScanResponse,
+    RunHistoryResponse,
 )
 from app.services.analysis import ComplianceAnalysisService
 
@@ -29,6 +33,26 @@ def list_policies() -> list[PolicyRecord]:
 @router.get("/library/stats", response_model=LibraryStats)
 def library_stats() -> LibraryStats:
     return LibraryStats.model_validate(get_service().get_stats())
+
+
+@router.get("/history", response_model=RunHistoryResponse)
+def history() -> RunHistoryResponse:
+    return get_service().history()
+
+
+@router.get("/analytics/summary", response_model=AnalyticsSummaryResponse)
+def analytics_summary() -> AnalyticsSummaryResponse:
+    return get_service().analytics_summary()
+
+
+@router.get("/analytics/coverage-matrix", response_model=CoverageMatrixResponse)
+def coverage_matrix() -> CoverageMatrixResponse:
+    return get_service().coverage_matrix()
+
+
+@router.get("/history/export.csv", response_class=PlainTextResponse)
+def history_csv() -> str:
+    return get_service().history_csv()
 
 
 @router.post("/index/rebuild")

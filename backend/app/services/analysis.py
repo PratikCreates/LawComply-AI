@@ -1,14 +1,18 @@
 from app.models.schemas import (
+    AnalyticsSummaryResponse,
     AnalyzeRequest,
     AnalyzeResponse,
     ComplianceAnalysis,
+    CoverageMatrixResponse,
     EvidenceItem,
     PolicyRecord,
     PortfolioPolicySummary,
     PortfolioScanRequest,
     PortfolioScanResponse,
+    RunHistoryResponse,
 )
 from app.services.citation_guard import CitationGuard
+from app.services.history import RunHistoryStore
 from app.services.llm import ComplianceAgent
 from app.services.reporting import AnalysisReporter
 from app.services.repository import DocumentRepository
@@ -23,6 +27,7 @@ class ComplianceAnalysisService:
         self.agent = ComplianceAgent()
         self.guard = CitationGuard()
         self.reporter = AnalysisReporter()
+        self.history_store = RunHistoryStore()
 
     def rebuild_index(self) -> int:
         files = self.repository.list_regulation_files()
@@ -40,12 +45,12 @@ class ComplianceAnalysisService:
             "vector_store_ready": self.index.is_ready(),
         }
 
-    def _resolve_policy(self, request: AnalyzeRequest) -> PolicyRecord:
+    def _resolve_policy(self, request: AnalyzeRequest) -> tuple[PolicyRecord, str]:
         if request.policy_id:
-            return self.repository.get_policy(request.policy_id)
+            return self.repository.get_policy(request.policy_id), "sample"
         assert request.policy_text is not None
         title = request.policy_name or "Ad hoc policy submission"
-        return PolicyRecord(id="ad_hoc.md", title=title, body=request.policy_text)
+        return PolicyRecord(id="ad_hoc.md", title=title, body=request.policy_text), "ad_hoc"
 
     @staticmethod
     def _format_evidence(evidence: list[EvidenceItem]) -> str:
@@ -59,7 +64,7 @@ class ComplianceAnalysisService:
     def analyze(self, request: AnalyzeRequest) -> AnalyzeResponse:
         if not self.index.is_ready():
             self.rebuild_index()
-        policy = self._resolve_policy(request)
+        policy, analysis_mode = self._resolve_policy(request)
         retriever = RetrievalService(self.index)
         evidence = retriever.retrieve_evidence(policy.body, top_k=request.top_k)
         analysis: ComplianceAnalysis = self.agent.analyze(
@@ -71,7 +76,9 @@ class ComplianceAnalysisService:
         validated = self.guard.validate(analysis)
         metrics = self.reporter.build_metrics(validated)
         report_markdown = self.reporter.render_markdown(validated, metrics)
-        return AnalyzeResponse(analysis=validated, metrics=metrics, report_markdown=report_markdown)
+        response = AnalyzeResponse(analysis=validated, metrics=metrics, report_markdown=report_markdown)
+        self.history_store.record_run(response, analysis_mode=analysis_mode)
+        return response
 
     def portfolio_scan(self, request: PortfolioScanRequest) -> PortfolioScanResponse:
         available_policies = {policy.id: policy for policy in self.repository.list_policies()}
@@ -108,3 +115,15 @@ class ComplianceAnalysisService:
             lowest_score_policy=ranked[0].policy_name,
             summaries=ranked,
         )
+
+    def history(self) -> RunHistoryResponse:
+        return self.history_store.history()
+
+    def analytics_summary(self) -> AnalyticsSummaryResponse:
+        return self.history_store.analytics_summary()
+
+    def coverage_matrix(self) -> CoverageMatrixResponse:
+        return self.history_store.coverage_matrix()
+
+    def history_csv(self) -> str:
+        return self.history_store.export_csv()
