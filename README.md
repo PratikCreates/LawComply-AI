@@ -16,6 +16,7 @@ LawComply AI is an end-to-end agentic RAG framework for regulatory compliance an
 - Regulation ingestion with deterministic clause identifiers
 - Citation-locked compliance analysis with hallucination mitigation
 - Retrieval-backed gap detection and remediation guidance
+- Hybrid retrieval with domain-aware reranking to reduce cross-domain evidence pollution
 - Sample corpora covering privacy and finance controls
 - Professional review dashboard for analysts and hiring demos
 
@@ -53,6 +54,15 @@ cd backend
 ```
 
 This writes `backend/baseline_benchmark_report.json` with citation coverage results for the seeded scenarios.
+
+### Retrieval evaluation
+
+```powershell
+cd backend
+.\.venv\Scripts\python scripts\run_retrieval_benchmark.py
+```
+
+On the seeded 12-case retrieval set used in this repository, the hybrid reranker preserved `Recall@5 = 1.00` and `MRR = 1.00` while improving in-domain precision from `0.8333` to `1.0000`.
 
 ### Frontend
 

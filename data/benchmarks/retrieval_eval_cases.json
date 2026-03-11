@@ -1,0 +1,74 @@
+[
+  {
+    "case_id": "privacy-notice-01",
+    "query": "Customer onboarding notices omit retention periods and complaint channels for data subjects.",
+    "expected_primary": "GDPR-ART-13",
+    "domain": "privacy"
+  },
+  {
+    "case_id": "privacy-erasure-01",
+    "query": "Deletion requests are processed manually and retention exceptions are undocumented.",
+    "expected_primary": "GDPR-ART-17",
+    "domain": "privacy"
+  },
+  {
+    "case_id": "privacy-control-review-01",
+    "query": "The privacy program has technical safeguards but no periodic review of organizational measures.",
+    "expected_primary": "GDPR-ART-24",
+    "domain": "privacy"
+  },
+  {
+    "case_id": "privacy-vendor-01",
+    "query": "Processor agreements do not require deletion support or sub-processor restrictions at termination.",
+    "expected_primary": "GDPR-ART-28",
+    "domain": "privacy"
+  },
+  {
+    "case_id": "privacy-ropa-01",
+    "query": "Business units keep separate spreadsheets and there is no central record of processing activities.",
+    "expected_primary": "GDPR-ART-30",
+    "domain": "privacy"
+  },
+  {
+    "case_id": "privacy-breach-01",
+    "query": "Incident procedures do not define when the supervisory authority must be notified after a breach.",
+    "expected_primary": "GDPR-ART-33",
+    "domain": "privacy"
+  },
+  {
+    "case_id": "finance-ownership-01",
+    "query": "Tax filings are completed monthly but the team cannot show reviewer sign-off for submissions.",
+    "expected_primary": "TAX-CTRL-01",
+    "domain": "finance"
+  },
+  {
+    "case_id": "finance-retention-01",
+    "query": "Support for tax positions is scattered in shared drives and hard to retrieve for audit.",
+    "expected_primary": "TAX-CTRL-02",
+    "domain": "finance"
+  },
+  {
+    "case_id": "finance-journal-01",
+    "query": "Manual journal entries affecting statutory reporting do not require secondary approval evidence.",
+    "expected_primary": "TAX-CTRL-03",
+    "domain": "finance"
+  },
+  {
+    "case_id": "finance-vendor-01",
+    "query": "Payroll and filing agents are onboarded once and never reviewed again for control effectiveness.",
+    "expected_primary": "TAX-CTRL-04",
+    "domain": "finance"
+  },
+  {
+    "case_id": "finance-monitoring-01",
+    "query": "No single owner tracks jurisdictional tax rule changes or regulatory updates.",
+    "expected_primary": "TAX-CTRL-05",
+    "domain": "finance"
+  },
+  {
+    "case_id": "finance-resilience-01",
+    "query": "Statutory reporting systems lack a tested fallback process for filing deadlines.",
+    "expected_primary": "TAX-CTRL-06",
+    "domain": "finance"
+  }
+]
