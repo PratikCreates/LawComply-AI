@@ -1,0 +1,12 @@
+[
+  {
+    "case_id": "privacy-retention-001",
+    "policy_file": "acme_data_retention_policy.md",
+    "expected_citations": ["GDPR-ART-13", "GDPR-ART-17", "GDPR-ART-28", "GDPR-ART-30"]
+  },
+  {
+    "case_id": "finance-controls-001",
+    "policy_file": "acme_finance_operations_policy.md",
+    "expected_citations": ["TAX-CTRL-01", "TAX-CTRL-03", "TAX-CTRL-04", "TAX-CTRL-05"]
+  }
+]

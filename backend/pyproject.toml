@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lawcomply-backend"
+version = "0.1.0"
+description = "Agentic RAG backend for compliance analysis."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "chromadb==0.5.23",
+  "fastapi==0.115.6",
+  "langchain==0.3.13",
+  "langchain-chroma==0.1.4",
+  "langchain-openai==0.2.14",
+  "markdown-it-py==3.0.0",
+  "openai==1.58.1",
+  "orjson==3.10.12",
+  "pydantic==2.10.4",
+  "pydantic-settings==2.7.0",
+  "python-dotenv==1.0.1",
+  "python-multipart==0.0.19",
+  "uvicorn[standard]==0.34.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "pytest==8.3.4",
+  "pytest-asyncio==0.25.0",
+  "ruff==0.8.5"
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
