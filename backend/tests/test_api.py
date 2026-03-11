@@ -6,6 +6,11 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_health_head_is_supported() -> None:
+    response = client.head("/health")
+    assert response.status_code == 200
+
+
 def test_analyze_response_includes_metrics_and_report() -> None:
     response = client.post("/api/v1/analyze", json={"policy_id": "acme_finance_operations_policy.md"})
     payload = response.json()

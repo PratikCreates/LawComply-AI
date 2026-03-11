@@ -1,7 +1,8 @@
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
+  BarChart3,
   Database,
   Download,
   FileInput,
@@ -29,10 +30,15 @@ import {
 } from "./lib/api";
 import {
   buildActionRoadmap,
+  buildClauseMix,
+  buildGovernanceChecks,
   buildInsightCards,
+  buildThemeSummary,
   policyTitleFromFileName,
   samplePreview
 } from "./lib/workspace";
+
+type Page = "workspace" | "report" | "governance" | "portfolio";
 
 const emptyStats: LibraryStats = {
   regulation_documents: 0,
@@ -41,7 +47,23 @@ const emptyStats: LibraryStats = {
   vector_store_ready: false
 };
 
+const navItems: Array<{ id: Page; label: string }> = [
+  { id: "workspace", label: "Workspace" },
+  { id: "report", label: "Report" },
+  { id: "governance", label: "Governance" },
+  { id: "portfolio", label: "Portfolio" }
+];
+
+function getPageFromHash(): Page {
+  const raw = window.location.hash.replace("#", "").trim();
+  if (raw === "report" || raw === "governance" || raw === "portfolio") {
+    return raw;
+  }
+  return "workspace";
+}
+
 export default function App() {
+  const [page, setPage] = useState<Page>(() => getPageFromHash());
   const [policies, setPolicies] = useState<PolicyRecord[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<string>("");
   const [workingTitle, setWorkingTitle] = useState("Working Policy Draft");
@@ -52,7 +74,12 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>("");
   const [busyAction, setBusyAction] = useState<"analysis" | "portfolio" | "index" | null>(null);
-  const resultsRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const handleHashChange = () => setPage(getPageFromHash());
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
     void Promise.all([fetchPolicies(), fetchStats()])
@@ -68,11 +95,10 @@ export default function App() {
       });
   }, []);
 
-  useEffect(() => {
-    if (analysisResult && resultsRef.current) {
-      resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [analysisResult]);
+  function navigate(nextPage: Page) {
+    window.location.hash = nextPage === "workspace" ? "" : nextPage;
+    setPage(nextPage);
+  }
 
   function loadPolicy(policy: PolicyRecord) {
     setSelectedPolicy(policy.id);
@@ -110,6 +136,7 @@ export default function App() {
       });
       setAnalysisResult(result);
       setMessage(`Analysis complete for ${result.analysis.policy_name}.`);
+      navigate("report");
     } catch (error) {
       setMessage((error as Error).message);
     } finally {
@@ -126,6 +153,7 @@ export default function App() {
       const result = await portfolioScan();
       setPortfolioResult(result);
       setMessage(`Portfolio scan completed across ${result.scanned_policies} policies.`);
+      navigate("portfolio");
     } catch (error) {
       setMessage((error as Error).message);
     } finally {
@@ -163,67 +191,77 @@ export default function App() {
   const metrics = analysisResult?.metrics ?? null;
   const insightCards = analysis && metrics ? buildInsightCards(analysis, metrics) : [];
   const actionRoadmap = analysis ? buildActionRoadmap(analysis.findings) : [];
+  const governanceChecks = analysis ? buildGovernanceChecks(policyText, analysis.findings) : [];
+  const themeSummary = analysis ? buildThemeSummary(analysis.findings) : [];
+  const clauseMix = analysis ? buildClauseMix(analysis.evidence) : [];
 
   return (
-    <div className="shell workspace-shell">
+    <div className="shell app-shell">
       <header className="topbar">
         <div>
           <p className="eyebrow">Regulatory Compliance Intelligence</p>
-          <h1>Built for policy review, evidence mapping, and remediation planning.</h1>
+          <h1>Data-driven compliance workspace with reporting, governance checks, and portfolio review.</h1>
           <p className="hero-text compact">
-            Load a seeded policy, edit it in place, run the compliance pass, and move directly into
-            prioritized actions instead of scanning raw output.
+            This is no longer a single prompt surface. It is structured like an analytics product:
+            prepare the policy, run the model, inspect the report, validate governance checks, and
+            compare portfolio performance.
           </p>
         </div>
         <div className="topbar-badges">
-          <span><ShieldCheck size={16} /> Citation-locked</span>
-          <span><Database size={16} /> Vector-backed</span>
-          <span><Sparkles size={16} /> Analyst workflow</span>
+          <span><ShieldCheck size={16} /> Citation-locked evidence</span>
+          <span><Database size={16} /> Retrieval and vector indexing</span>
+          <span><BarChart3 size={16} /> Governance and portfolio analytics</span>
         </div>
       </header>
 
-      <main className="workspace-layout">
-        <aside className="sidebar-column">
-          <section className="panel sticky-panel">
-            <div className="section-heading compact-heading">
-              <h2>Control center</h2>
-              <p>Run the workflow from here. Results land in the main workspace immediately to the right.</p>
-            </div>
-            <div className="action-stack">
-              <button className="primary-button block-button" onClick={handleAnalyze} disabled={busy}>
-                {busyAction === "analysis" ? "Running analysis..." : "Run analysis"}
-                <ArrowRight size={16} />
-              </button>
-              <button className="secondary-button block-button" onClick={handlePortfolioScan} disabled={busy}>
-                {busyAction === "portfolio" ? "Scanning portfolio..." : "Portfolio scan"}
-              </button>
-              <button className="ghost-button block-button" onClick={handleIndexRebuild} disabled={busy}>
-                <RefreshCw size={15} />
-                {busyAction === "index" ? "Rebuilding index..." : "Rebuild index"}
-              </button>
-            </div>
-            <div className="mini-metrics">
-              <MetricCard label="Regulation docs" value={stats.regulation_documents} note="Seeded legal packs" />
-              <MetricCard label="Indexed clauses" value={stats.regulation_clauses} note="Deterministic evidence set" />
-              <MetricCard label="Policy docs" value={stats.policy_documents} note="Ready-to-run examples" />
-              <MetricCard label="Vector store" value={stats.vector_store_ready ? "Ready" : "Pending"} note="Local Chroma state" />
-            </div>
-            {message ? (
-              <div className="message-row"><AlertCircle size={16} /><span>{message}</span></div>
-            ) : null}
-            {busyAction === "analysis" ? (
-              <div className="info-row">
-                <span>The model is running now. Typical response time is around 10-15 seconds on the current setup.</span>
-              </div>
-            ) : null}
-          </section>
+      <nav className="page-nav panel">
+        <div className="nav-list">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              className={`nav-pill ${page === item.id ? "active" : ""}`}
+              onClick={() => navigate(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="nav-actions">
+          <button className="primary-button" onClick={handleAnalyze} disabled={busy}>
+            {busyAction === "analysis" ? "Running analysis..." : "Run analysis"}
+            <ArrowRight size={16} />
+          </button>
+          <button className="secondary-button" onClick={handlePortfolioScan} disabled={busy}>
+            {busyAction === "portfolio" ? "Scanning portfolio..." : "Portfolio scan"}
+          </button>
+          <button className="ghost-button" onClick={handleIndexRebuild} disabled={busy}>
+            <RefreshCw size={15} />
+            {busyAction === "index" ? "Rebuilding index..." : "Rebuild index"}
+          </button>
+        </div>
+      </nav>
 
-          <section className="panel">
+      {message ? (
+        <div className="message-strip panel">
+          <AlertCircle size={16} />
+          <span>{message}</span>
+        </div>
+      ) : null}
+      {busyAction === "analysis" ? (
+        <div className="info-strip panel">
+          <Sparkles size={16} />
+          <span>Analysis is running. The current fast-model path usually returns in roughly 10-15 seconds.</span>
+        </div>
+      ) : null}
+
+      {page === "workspace" ? (
+        <main className="workspace-grid">
+          <section className="panel sample-panel">
             <div className="section-heading compact-heading">
-              <h2>Sample pack</h2>
-              <p>Click any seeded policy to load it into the editor below before running analysis.</p>
+              <h2>Preloaded policy pack</h2>
+              <p>Click a seed document to load it into the editor. The visible editor content is the source of truth for every run.</p>
             </div>
-            <div className="sample-list">
+            <div className="sample-list two-column-samples">
               {policies.map((policy) => (
                 <button
                   key={policy.id}
@@ -238,51 +276,63 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <div className="workspace-stats">
+              <MetricCard label="Regulation docs" value={stats.regulation_documents} note="Seeded legal packs" />
+              <MetricCard label="Indexed clauses" value={stats.regulation_clauses} note="Deterministic evidence set" />
+              <MetricCard label="Policy docs" value={stats.policy_documents} note="Ready-to-run examples" />
+              <MetricCard label="Vector store" value={stats.vector_store_ready ? "Ready" : "Pending"} note="Local Chroma state" />
+            </div>
           </section>
 
-          <section className="panel">
+          <section className="panel editor-panel">
             <div className="section-heading compact-heading">
-              <h2>Working policy</h2>
-              <p>The text in this editor is the exact content that will be analyzed.</p>
+              <h2>Policy workspace</h2>
+              <p>Use this as the working document canvas. It is full-width so you can inspect and edit policy content before running the report.</p>
             </div>
-            <label className="field-label" htmlFor="policy-title">Policy title</label>
-            <input
-              id="policy-title"
-              className="field"
-              value={workingTitle}
-              onChange={(event) => setWorkingTitle(event.target.value)}
-              disabled={busy}
-            />
+            <div className="editor-meta">
+              <div>
+                <label className="field-label" htmlFor="policy-title">Policy title</label>
+                <input
+                  id="policy-title"
+                  className="field"
+                  value={workingTitle}
+                  onChange={(event) => setWorkingTitle(event.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="editor-tools">
+                <label className="file-button">
+                  <FileInput size={15} />
+                  Load `.txt` or `.md`
+                  <input type="file" accept=".txt,.md" onChange={handleFileLoad} />
+                </label>
+                <button className="ghost-button" onClick={() => setPolicyText("")} disabled={busy}>
+                  Clear editor
+                </button>
+              </div>
+            </div>
             <label className="field-label" htmlFor="policy-text">Policy body</label>
             <textarea
               id="policy-text"
-              className="textarea tall"
+              className="textarea mega-textarea"
               value={policyText}
               onChange={(event) => setPolicyText(event.target.value)}
             />
-            <div className="utility-row">
-              <label className="file-button">
-                <FileInput size={15} />
-                Load `.txt` or `.md`
-                <input type="file" accept=".txt,.md" onChange={handleFileLoad} />
-              </label>
-              <button className="ghost-button" onClick={() => setPolicyText("")} disabled={busy}>
-                Clear editor
-              </button>
-            </div>
           </section>
-        </aside>
+        </main>
+      ) : null}
 
-        <section className="results-column" ref={resultsRef}>
+      {page === "report" ? (
+        <main className="report-layout">
           {analysis && metrics ? (
             <>
-              <section className="panel result-hero">
-                <div className="result-hero-main">
-                  <p className="eyebrow">Current assessment</p>
+              <section className="panel report-hero">
+                <div className="report-copy">
+                  <p className="eyebrow">Report</p>
                   <h2>{analysis.policy_name}</h2>
                   <p className="summary-copy">{analysis.executive_summary}</p>
                 </div>
-                <div className="score-cluster">
+                <div className="report-scorecard">
                   <div>
                     <span className="metric-label">Score</span>
                     <strong className="score-value">{analysis.overall_score}</strong>
@@ -310,16 +360,8 @@ export default function App() {
 
               <section className="panel">
                 <div className="section-heading compact-heading">
-                  <h2>Score breakdown</h2>
-                  <p>Use the scorecards to understand why the result landed where it did.</p>
-                </div>
-                <ScoreBreakdown metrics={metrics} />
-              </section>
-
-              <section className="panel">
-                <div className="section-heading compact-heading">
                   <h2>Action roadmap</h2>
-                  <p>Top remediation items grouped into near-term execution windows.</p>
+                  <p>Translate the findings into an execution sequence instead of stopping at the LLM summary.</p>
                 </div>
                 <div className="roadmap-grid">
                   {actionRoadmap.map((action) => (
@@ -339,8 +381,16 @@ export default function App() {
 
               <section className="panel">
                 <div className="section-heading compact-heading">
+                  <h2>Score breakdown</h2>
+                  <p>Use the scorecards to understand why the result landed where it did.</p>
+                </div>
+                <ScoreBreakdown metrics={metrics} />
+              </section>
+
+              <section className="panel">
+                <div className="section-heading compact-heading">
                   <h2>Findings</h2>
-                  <p>Detailed gap analysis with remediation guidance and clause-level support.</p>
+                  <p>Detailed gap analysis with clause-level support and recommended actions.</p>
                 </div>
                 <div className="finding-list">
                   {analysis.findings.map((finding) => (
@@ -352,25 +402,96 @@ export default function App() {
               <section className="panel">
                 <div className="section-heading compact-heading">
                   <h2>Evidence pack</h2>
-                  <p>Every conclusion above is constrained to these retrieved regulatory clauses.</p>
+                  <p>Retrieved clauses that bounded the response and support auditability.</p>
                 </div>
                 <EvidenceTable evidence={analysis.evidence} />
               </section>
             </>
           ) : (
-            <section className="panel onboarding-panel">
-              <Library size={18} />
-              <div>
-                <h2>No analysis loaded yet</h2>
-                <p>
-                  Choose one of the seeded policies from the left, review the text in the editor,
-                  and click <strong>Run analysis</strong>. The summary, action roadmap, findings,
-                  and evidence pack will appear here in the order an analyst would read them.
-                </p>
-              </div>
+            <section className="panel empty-panel">
+              <h2>No report yet</h2>
+              <p>Run an analysis from the Workspace page and the report will open here as a separate view.</p>
             </section>
           )}
+        </main>
+      ) : null}
 
+      {page === "governance" ? (
+        <main className="governance-layout">
+          {analysis ? (
+            <>
+              <section className="panel governance-hero">
+                <div>
+                  <p className="eyebrow">Governance and validation</p>
+                  <h2>Deterministic checks around the same policy and evidence set.</h2>
+                  <p className="summary-copy">
+                    This view adds data-quality, stewardship, and evidence-distribution checks so the project reads like an analytics workflow instead of just an LLM result page.
+                  </p>
+                </div>
+              </section>
+
+              <section className="governance-grid">
+                <section className="panel">
+                  <div className="section-heading compact-heading">
+                    <h2>Policy quality checks</h2>
+                    <p>Rule-based checks over the policy text for ownership, cadence, retention, incident handling, and vendor controls.</p>
+                  </div>
+                  <div className="check-list">
+                    {governanceChecks.map((check) => (
+                      <div className="check-row" key={check.label}>
+                        <div>
+                          <strong>{check.label}</strong>
+                          <p>{check.detail}</p>
+                        </div>
+                        <span className={`status-dot ${check.status}`}>{check.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="panel">
+                  <div className="section-heading compact-heading">
+                    <h2>Theme analysis</h2>
+                    <p>Aggregated finding themes suitable for dashboarding and stakeholder reporting.</p>
+                  </div>
+                  <div className="theme-list">
+                    {themeSummary.map((theme) => (
+                      <div className="theme-row" key={theme.theme}>
+                        <span>{theme.theme}</span>
+                        <strong>{theme.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="panel">
+                  <div className="section-heading compact-heading">
+                    <h2>Clause mix</h2>
+                    <p>Distribution of cited evidence across the underlying regulatory corpus.</p>
+                  </div>
+                  <div className="clause-mix">
+                    {clauseMix.map((item) => (
+                      <div className="mix-row" key={item.label}>
+                        <span>{item.label}</span>
+                        <div className="mix-bar"><div style={{ width: `${item.share}%` }} /></div>
+                        <strong>{item.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </section>
+            </>
+          ) : (
+            <section className="panel empty-panel">
+              <h2>No governance view yet</h2>
+              <p>Run an analysis first, then this page will populate deterministic checks and evidence analytics.</p>
+            </section>
+          )}
+        </main>
+      ) : null}
+
+      {page === "portfolio" ? (
+        <main className="portfolio-layout">
           <section className="panel">
             <div className="section-heading compact-heading">
               <h2>Portfolio overview</h2>
@@ -395,8 +516,8 @@ export default function App() {
               </div>
             )}
           </section>
-        </section>
-      </main>
+        </main>
+      ) : null}
     </div>
   );
 }
