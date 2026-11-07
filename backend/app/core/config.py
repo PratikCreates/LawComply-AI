@@ -29,6 +29,7 @@ class Settings(BaseSettings):
         default="BAAI/bge-en-icl",
         alias="NEBIUS_EMBEDDING_MODEL",
     )
+    remote_embeddings_enabled: bool = Field(default=False, alias="REMOTE_EMBEDDINGS_ENABLED")
     vector_db_dir: str = Field(default="backend/.chroma", alias="VECTOR_DB_DIR")
     cors_origins_raw: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
     cors_origin_regex: str = Field(

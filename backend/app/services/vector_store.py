@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+from hashlib import blake2b
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ import posthog
 from chromadb.telemetry.product import posthog as chroma_posthog
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 
 from app.core.config import get_settings
@@ -31,6 +33,28 @@ class RegulationChunk:
     content: str
 
 
+class LocalHashEmbeddings(Embeddings):
+    """Deterministic bag-of-words embeddings for local indexing and tests."""
+
+    dimensions = 384
+    token_pattern = re.compile(r"[a-z0-9]{3,}")
+
+    def _embed(self, text: str) -> list[float]:
+        vector = [0.0] * self.dimensions
+        for token in self.token_pattern.findall(text.lower()):
+            bucket = int.from_bytes(blake2b(token.encode("utf-8"), digest_size=4).digest(), "big")
+            bucket %= self.dimensions
+            vector[bucket] += 1.0
+        norm = sum(value * value for value in vector) ** 0.5 or 1.0
+        return [value / norm for value in vector]
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [self._embed(text) for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._embed(text)
+
+
 class ComplianceIndex:
     collection_name = "regulations"
 
@@ -41,7 +65,9 @@ class ComplianceIndex:
         self.client_settings = chromadb.Settings(anonymized_telemetry=False)
 
     @property
-    def embeddings(self) -> OpenAIEmbeddings:
+    def embeddings(self) -> Embeddings:
+        if not self.settings.remote_embeddings_enabled or not self.settings.nebius_api_key:
+            return LocalHashEmbeddings()
         return OpenAIEmbeddings(
             model=self.settings.nebius_embedding_model,
             api_key=self.settings.nebius_api_key,

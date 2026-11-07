@@ -2,13 +2,16 @@
 
 LawComply AI is an end-to-end agentic RAG framework for regulatory compliance analysis. It ingests internal policy documents, indexes regulatory clauses into a vector database, retrieves evidence with citation locking, and produces auditable gap analyses through a FastAPI backend and a React frontend.
 
+The project is designed to demo reliably even without cloud credentials. By default, regulation indexing uses deterministic local hash embeddings and the LLM service falls back to cited local analysis if the remote provider is unavailable. When Nebius credentials are present, the same API can use hosted chat and embedding models.
+
 ## Stack
 
 - Python 3.11
 - FastAPI
 - LangChain
 - Chroma vector database
-- Nebius-hosted LLM and embedding endpoints through the OpenAI-compatible API
+- Local deterministic embeddings by default
+- Optional Nebius-hosted LLM and embedding endpoints through the OpenAI-compatible API
 - React, TypeScript, Vite
 
 ## Core capabilities
@@ -32,11 +35,13 @@ LawComply AI is an end-to-end agentic RAG framework for regulatory compliance an
 
 ## Quick start
 
-1. Copy `.env.example` to `.env` and add your Nebius key.
+1. Copy `.env.example` to `.env`.
 2. Create a Python virtual environment and install backend dependencies.
 3. Install frontend dependencies.
 4. Build the vector index.
 5. Start the API and the web client.
+
+Cloud keys are optional for a local demo. Leave `REMOTE_EMBEDDINGS_ENABLED=false` to use deterministic local embeddings. Add `NEBIUS_API_KEY` and set `REMOTE_EMBEDDINGS_ENABLED=true` only when you want hosted embeddings.
 
 ### Backend
 
@@ -48,6 +53,38 @@ pip install -e .[dev]
 python scripts\rebuild_index.py
 uvicorn app.main:app --reload --port 8000
 ```
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+## Verification
+
+Run the backend tests:
+
+```powershell
+cd backend
+.\.venv\Scripts\python -m pytest -q
+```
+
+Run the frontend production build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+Expected current local state:
+
+- Backend tests pass with deterministic local embeddings.
+- Frontend build passes with TypeScript and Vite.
+- Retrieval remains robust when old vector-store dimensions do not match the active embedding backend.
 
 ### Benchmark
 
@@ -67,22 +104,13 @@ cd backend
 
 On the seeded 12-case retrieval set used in this repository, the hybrid reranker preserved `Recall@5 = 1.00` and `MRR = 1.00` while improving in-domain precision from `0.8333` to `1.0000`.
 
-### Frontend
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173`.
-
 ## What makes it useful
 
 - You can review seeded policies immediately without preparing any extra data.
 - You can paste a real policy excerpt or load a `.txt` or `.md` file from the web app.
 - Every run returns a structured report, evidence-backed findings, derived risk metrics, and a markdown export that can be shared with a reviewer.
 - The portfolio scan highlights which policy should be reviewed first instead of forcing users to inspect documents one by one.
+- Local-first retrieval makes demos repeatable, while hosted models can be enabled for richer natural-language analysis.
 
 ## API overview
 
@@ -99,6 +127,7 @@ Open `http://localhost:5173`.
 - Citation IDs are validated against the retrieval set before results are returned.
 - Unsupported citations trigger a hard validation failure instead of a silent answer.
 - The analysis prompt forbids uncited legal claims and requires remediation proposals tied to evidence.
+- Remote LLM failures fall back to deterministic cited analysis instead of returning uncited free text.
 
 ## Example resume framing
 

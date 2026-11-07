@@ -96,9 +96,11 @@ class RetrievalService:
         query_domain = infer_domain(query)
         for candidate in candidates:
             embedding = np.array(candidate["embedding"], dtype=float)
-            semantic_score = float(
-                np.dot(query_embedding, embedding) / ((np.linalg.norm(embedding) or 1.0) * query_norm)
-            )
+            semantic_score = 0.0
+            if query_embedding.shape == embedding.shape:
+                semantic_score = float(
+                    np.dot(query_embedding, embedding) / ((np.linalg.norm(embedding) or 1.0) * query_norm)
+                )
             lexical_score = lexical_overlap_score(query, candidate["document"])
             score = combine_scores(
                 semantic_score=semantic_score,
